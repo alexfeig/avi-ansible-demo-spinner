@@ -1,0 +1,53 @@
+---
+- name: Tests | Waiting for service engines to come online...
+  avi_serviceengine:
+    username: '{{ avi_username }}'
+    controller: '{{ avi_controller }}'
+    password: '{{ avi_password }}'
+    state: present
+  register: result
+  until: result | json_query('obj.results[*].oper_status.state') == ["OPER_UP", "OPER_UP"]
+  retries:  50
+  delay: 30
+
+- name: Tests | Finding VIP
+  avi_virtualservice:
+    cloud_ref: /api/cloud?name={{ avi_cloud_name }}
+    controller: "{{ avi_controller }}"
+    username: "{{ avi_username }}"
+    password: "{{ avi_password }}"
+    api_version: "{{ avi_api_version }}"
+    name: "{{ avi_vs }}"
+  register: result
+
+- name: Tests | Setting VIP
+  set_fact:
+    ab_vip: "{{ result | json_query('obj.vip[*].floating_ip.addr') }}"
+
+- name: Tests | Waiting for service to come online...
+  wait_for:
+    port: 443
+    host: "{{ item }}"
+    delay: 5
+  with_items: "{{ ab_vip }}"
+
+- name: Tests | Testing WAF
+  uri:
+    url: "https://{{ item }}/foo.com"
+    validate_certs: no
+  with_items: "{{ ab_vip }}"
+  failed_when: false
+
+- name: Tests | Testing Round Robin
+  shell: "{{ playbook_dir }}/files/rr_test.sh {{ item }}"
+  with_items: "{{ ab_vip }}"
+  register: rr
+
+- name: Tests | Running Apache Bench
+  shell: ab -n 10000 -c 1000 -w https://{{ item }}/ > bench.html
+  changed_when: False
+  with_items: "{{ ab_vip }}"
+
+- name: Tests | Displaying Round Robin
+  debug:
+    var: rr

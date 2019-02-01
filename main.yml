@@ -1,0 +1,9 @@
+- hosts: localhost
+  gather_facts: 'no'
+  connection: local
+
+  roles:
+  - role: avinetworks.avisdk
+  - role: configure_cloud
+  - role: configure_controller
+  - role: tests

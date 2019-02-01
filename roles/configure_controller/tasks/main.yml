@@ -1,0 +1,57 @@
+---
+- name: Configure Controller | Creating Pool Variable
+  set_fact:
+    pool_servers: "{{ pool_servers | default([]) + [{'ip': {'type': 'V4', 'addr': item }}]}}"
+  loop: "{{ address }}"
+
+- name: Configure Controller | Creating Pool
+  avi_pool:
+    cloud_ref: "/api/cloud?name={{ avi_cloud_name }}"
+    controller: "{{ avi_controller }}"
+    username: "{{ avi_username }}"
+    password: "{{ avi_password }}"
+    api_version: "{{ avi_api_version }}"
+    name: "{{ avi_pool }}"
+    state: present
+    lb_algorithm: "LB_ALGORITHM_ROUND_ROBIN"
+    health_monitor_refs:
+        - "/api/healthmonitor?name=System-HTTP"
+    servers: "{{ pool_servers }}"
+
+- name: Configure Controller | Creating Azure Virtual Service
+  avi_virtualservice:
+    cloud_ref: "/api/cloud?name={{ avi_cloud_name }}"
+    controller: "{{ avi_controller }}"
+    username: "{{ avi_username }}"
+    password: "{{ avi_password }}"
+    api_version: "{{ avi_api_version }}"
+    name: "{{ avi_vs }}"
+    state: present
+    services:
+        - port: 443
+          enable_ssl: true
+        - port: 80
+    ssl_profile_ref: "/api/sslprofile?name=System-Standard"
+    application_profile_ref: "/api/applicationprofile?name=System-HTTP"
+    ssl_key_and_certificate_refs:
+        - "/api/sslkeyandcertificate?name=System-Default-Cert"
+        - "/api/sslkeyandcertificate?name=System-Default-Cert-EC"
+    pool_ref: "/api/pool?name={{ avi_pool }}"
+    vip:
+        - subnet:
+            ip_addr:
+                type: V4
+                addr: "10.0.0.0"
+            mask: 16
+          auto_allocate_ip: true
+          auto_allocate_fip: true
+          subnet_uuid: "{{ azure_se_subnet }}"
+          auto_allocate_floating_ip: true
+    analytics_policy:
+        client_insights: ACTIVE
+        metrics_realtime_update:
+          duration: 0
+          enabled: true
+    waf_policy_ref: "/api/wafpolicy?name={{ avi_waf_policy_name }}"
+  when: cloud == "azure"
+

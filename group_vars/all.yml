@@ -1,0 +1,15 @@
+---
+# Variables - Commented variables are invoked by terraform
+# using -e
+
+## Avi Variables
+avi_api_version: 17.2.9
+avi_username: admin
+avi_pool: basic-web-lb-pool-test
+avi_vs: basic-web-lb-test
+avi_waf_policy_name: System-WAF-Policy
+avi_cloud_creds_name: tf-ansible
+avi_cloud_name: Default-Cloud
+
+## Azure
+azure_location: eastus

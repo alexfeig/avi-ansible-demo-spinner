@@ -1,0 +1,56 @@
+---
+- name: Configure Cloud | Including credentials variable file
+  include_vars: creds.yml
+  no_log: true
+
+- name: Configure Cloud | Waiting for controller to come online...
+  avi_api_session:
+    api_version: "{{ avi_api_version }}"
+    username: "{{ avi_username }}"
+    controller: "{{ avi_controller }}"
+    password: "{{ avi_password }}"
+    http_method: get
+    timeout: 3000
+    path: cluster/runtime
+  register: cluster_runtime
+  until:
+    - cluster_runtime.obj is defined
+    - cluster_runtime.obj.cluster_state.state == "CLUSTER_UP_NO_HA" or
+      cluster_runtime.obj.cluster_state.state == "CLUSTER_UP_HA_ACTIVE"
+  retries: 300
+  delay: 10
+
+- name: Configure Cloud | Creating Azure Credentials
+  avi_cloudconnectoruser:
+    api_version: "{{ avi_api_version }}"
+    username: "{{ avi_username }}"
+    controller: "{{ avi_controller }}"
+    password: "{{ avi_password }}"
+    name: "{{ avi_cloud_creds_name }}"
+    azure_userpass:
+      password: "{{ azure_password }}"
+      tenant_name: "{{ azure_tenant_name }}"
+      username: "{{ azure_username }}"
+  when: cloud == "azure"
+
+- name: Configure Cloud | Creating Azure Cloud
+  avi_cloud:
+    api_version: "{{ avi_api_version }}"
+    username: "{{ avi_username }}"
+    controller: "{{ avi_controller }}"
+    password: "{{ avi_password }}"
+    vtype: "CLOUD_AZURE"
+    license_type: "LIC_CORES"
+    license_tier: "ENTERPRISE_18"
+    name: "{{ avi_cloud_name }}"
+    azure_configuration:
+      cloud_credentials_ref: "/api/cloudconnectoruser/?name={{ avi_cloud_creds_name }}"
+      resource_group: "{{ azure_rg_name }}"
+      use_enhanced_ha: false
+      location: "{{ azure_location }}"
+      use_azure_dns: false
+      subscription_id: "{{ azure_subscription }}"
+      network_info:
+        - se_network_id: "{{ azure_se_subnet }}"
+          virtual_network_id: "/subscriptions/{{ azure_subscription }}/resourceGroups/{{ azure_rg_name }}/providers/Microsoft.Network/virtualNetworks/{{ azure_vnet }}"
+  when: cloud == "azure"
