@@ -3,7 +3,7 @@
 # using -e
 
 ## Avi Variables
-avi_api_version: 17.2.9
+avi_api_version: 17.2.14
 avi_username: admin
 avi_pool: basic-web-lb-pool-test
 avi_vs: basic-web-lb-test

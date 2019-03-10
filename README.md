@@ -18,7 +18,7 @@ To install the Ansible Galaxy role:
 ## Creating creds.yml
 It is recommended that you use Ansible Vault to create the credential file. 
 
-To do so, type `ansible-vault create foo.yml` and vim will open.
+To do so, type `ansible-vault create creds.yml` and vim will open.
 
 Add the following variables:
 
